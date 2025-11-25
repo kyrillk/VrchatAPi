@@ -199,16 +199,14 @@ try
 
     // Log in
     WriteLine("Logging in...");
-    var currentUserResp = authApi.GetCurrentUserWithHttpInfo();
-    CurrentUser currentUser = currentUserResp.Data;
+    CurrentUser currentUser = authApi.GetCurrentUser();
     await WaitSeconds(1);
 
-    // Check if 2FA is needed using official pattern
-    bool requiresEmail2FA = currentUserResp.RawContent.Contains("emailOtp");
-    if (requiresEmail2FA || currentUser == null)
+    // Check if 2FA is needed
+    if (currentUser == null)
     {
         WriteLine("2FA needed...");
-
+    
         // Normalize and decode the key
         string rawKey = inputs.Key ?? string.Empty;
         rawKey = rawKey.Replace(" ", string.Empty).Trim();
@@ -220,10 +218,10 @@ try
             if (m.Success) rawKey = m.Groups[1].Value;
         }
         string key = Regex.Replace(rawKey.ToUpperInvariant(), @"[^A-Z2-7]", string.Empty);
-
+    
         // For debugging only: print timestamp (do NOT print key or full code in prod)
         WriteLine($"Local UTC time: {DateTimeOffset.UtcNow:O}");
-
+    
         byte[] secretBytes;
         try
         {
@@ -235,9 +233,9 @@ try
             Environment.Exit(2);
             return;
         }
-
+    
         var totp = new Totp(secretBytes);
-
+    
         // If we're very close to boundary, wait for next token
         int remainingSeconds = totp.RemainingSeconds();
         if (remainingSeconds < 5)
@@ -246,7 +244,7 @@ try
             await Task.Delay(TimeSpan.FromSeconds(remainingSeconds + 1));
             totp = new Totp(secretBytes); // re-create to be safe
         }
-
+    
         // Try a few times to tolerate small clock drift / latency
         const int maxAttempts = 3;
         bool ok = false;
@@ -254,7 +252,7 @@ try
         {
             string code = totp.ComputeTotp(); // compute right before call
             WriteLine($"Using 2FA code (masked): {code}**** (attempt {attempt})");
-
+    
             try
             {
                 // If Verify2FA has a return value, prefer checking it; otherwise check currentUser afterward
@@ -264,18 +262,18 @@ try
             {
                 WriteLine($"Verify2FA threw: {ex.Message}");
             }
-
-            // Re-fetch user after 2FA attempt
-            currentUserResp = authApi.GetCurrentUserWithHttpInfo();
-            currentUser = currentUserResp.Data;
+    
+            currentUser = authApi.GetCurrentUser();
             await WaitSeconds(1);
+                WriteLine($"Logged in as {currentUser.DisplayName}");
 
+    
             if (currentUser != null)
             {
                 ok = true;
                 break;
             }
-
+    
             int rem = totp.RemainingSeconds();
             WriteLine($"Verify failed, token remaining seconds: {rem}");
             if (attempt < maxAttempts)
@@ -284,7 +282,7 @@ try
                 await Task.Delay(1000);
             }
         }
-
+    
         if (!ok)
         {
             WriteLine("Failed to validate 2FA!");
