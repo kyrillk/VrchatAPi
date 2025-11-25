@@ -250,18 +250,24 @@ try
                 var result = authApi.Verify2FA(new TwoFactorAuthCode(code));
                 WriteLine($"Verify2FA result: {result}");
 
-                if (result.Verified)
+                currentUser = null;
+                for (int i = 0; i < 3; i++)
                 {
-                    WriteLine("2FA verified! Continuing...");
-                    await Task.Delay(10000); // wait 2 seconds for session to register
-                    currentUser = authApi.GetCurrentUser();
-
-                        ApiResponse<CurrentUser> response = authApi.GetCurrentUserWithHttpInfo();
-                        WriteLine("Status Code: " + response.StatusCode);
-                        WriteLine("Response Headers: " + response.Headers);
-                        WriteLine("Response Body: " + response.Data);
+                    var response = authApi.GetCurrentUserWithHttpInfo();
+                    var tempcurrentUser = authApi.GetCurrentUser();
+                    if (tempcurrentUser != null)
+                    {
+                        WriteLine($"Got current user after 2FA (GetCurrentUser): {tempcurrentUser}");
+                        break;
+                    }
+                    if (response.Data != null)
+                    {
+                        currentUser = response.Data;
+                        WriteLine($"Got current user after 2FA: {currentUser}");
+                        break;
+                    }
+                    await Task.Delay(60000); // wait 60 seconds before retry
                 }
-
             }
             catch (Exception ex)
             {
