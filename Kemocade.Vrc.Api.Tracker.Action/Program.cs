@@ -256,7 +256,7 @@ try
             try
             {
                 // If Verify2FA has a return value, prefer checking it; otherwise check currentUser afterward
-                var result = authApi.Verify2FA(new(code));
+                var result = authApi.Verify2FA(new TwoFactorAuthCode(code));
                 WriteLine($"Verify2FA result: {result}");
             }
             catch (Exception ex)
