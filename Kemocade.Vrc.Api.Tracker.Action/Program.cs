@@ -201,26 +201,82 @@ try
     if (currentUser == null)
     {
         WriteLine("2FA needed...");
-
-        // Generate a 2FA code with the stored secret
-        string key = inputs.Key.Replace(" ", string.Empty);
-        Totp totp = new(Base32Encoding.ToBytes(key));
-
-        // Make sure there's enough time left on the token
+    
+        // Normalize and decode the key
+        string rawKey = inputs.Key ?? string.Empty;
+        rawKey = rawKey.Replace(" ", string.Empty).Trim();
+        // If someone pasted an otpauth URI, strip it
+        if (rawKey.StartsWith("otpauth://", StringComparison.OrdinalIgnoreCase))
+        {
+            // otpauth://totp/Label?secret=SECRET&...
+            var m = Regex.Match(rawKey, @"[&?]secret=([^&]+)", RegexOptions.IgnoreCase);
+            if (m.Success) rawKey = m.Groups[1].Value;
+        }
+        string key = Regex.Replace(rawKey.ToUpperInvariant(), @"[^A-Z2-7]", string.Empty);
+    
+        // For debugging only: print timestamp (do NOT print key or full code in prod)
+        WriteLine($"Local UTC time: {DateTimeOffset.UtcNow:O}");
+    
+        byte[] secretBytes;
+        try
+        {
+            secretBytes = Base32Encoding.ToBytes(key);
+        }
+        catch (Exception ex)
+        {
+            WriteLine($"Failed to decode 2FA key: {ex.Message}");
+            Environment.Exit(2);
+            return;
+        }
+    
+        var totp = new Totp(secretBytes);
+    
+        // If we're very close to boundary, wait for next token
         int remainingSeconds = totp.RemainingSeconds();
         if (remainingSeconds < 5)
         {
             WriteLine("Waiting for new token...");
             await Task.Delay(TimeSpan.FromSeconds(remainingSeconds + 1));
+            totp = new Totp(secretBytes); // re-create to be safe
         }
-
-        // Verify 2FA
-        WriteLine("Using 2FA code...");
-        authApi.Verify2FA(new(totp.ComputeTotp()));
-        currentUser = authApi.GetCurrentUser();
-        await WaitSeconds(1);
-
-        if (currentUser == null)
+    
+        // Try a few times to tolerate small clock drift / latency
+        const int maxAttempts = 3;
+        bool ok = false;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            string code = totp.ComputeTotp(); // compute right before call
+            WriteLine($"Using 2FA code (masked): {code.Substring(0, Math.Min(2, code.Length))}**** (attempt {attempt})");
+    
+            try
+            {
+                // If Verify2FA has a return value, prefer checking it; otherwise check currentUser afterward
+                authApi.Verify2FA(new(code));
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Verify2FA threw: {ex.Message}");
+            }
+    
+            currentUser = authApi.GetCurrentUser();
+            await WaitSeconds(1);
+    
+            if (currentUser != null)
+            {
+                ok = true;
+                break;
+            }
+    
+            int rem = totp.RemainingSeconds();
+            WriteLine($"Verify failed, token remaining seconds: {rem}");
+            if (attempt < maxAttempts)
+            {
+                // Sleep into next time window if needed
+                await Task.Delay(1000);
+            }
+        }
+    
+        if (!ok)
         {
             WriteLine("Failed to validate 2FA!");
             Environment.Exit(2);
