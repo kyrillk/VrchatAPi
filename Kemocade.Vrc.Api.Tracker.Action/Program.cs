@@ -197,6 +197,7 @@ try
     WorldsApi worldsApi = new(apiClient, apiClient, config);
     UsersApi usersApi = new(apiClient, apiClient, config);
     GroupsApi groupsApi = new(apiClient, apiClient, config);
+    FriendsApi friendsApi = new(apiClient, apiClient, config);
 
     // Log in
     WriteLine("Logging in...");
@@ -254,18 +255,17 @@ try
                 for (int i = 0; i < 3; i++)
                 {
                     var response = authApi.GetCurrentUserWithHttpInfo();
-                    var tempcurrentUser = authApi.GetCurrentUser();
-                    if (tempcurrentUser != null)
+                    currentUser = authApi.GetCurrentUser();
+                    if (currentUser != null)
                     {
-                        WriteLine($"Got current user after 2FA (GetCurrentUser): {tempcurrentUser}");
+                        WriteLine($"Got current user after 2FA (GetCurrentUser): {currentUser}");
                         break;
                     }
-                    if (response.Data != null)
-                    {
-                        currentUser = response.Data;
-                        WriteLine($"Got current user after 2FA: {currentUser}");
-                        break;
+                    var friendList = friendsApi.GetFriends();
+                    if (friendList != null){
+                        WriteLine($"Got friends list after 2FA (GetFriends): {friendList.Count} friends");
                     }
+
                     await Task.Delay(60000); // wait 60 seconds before retry
                 }
             }
