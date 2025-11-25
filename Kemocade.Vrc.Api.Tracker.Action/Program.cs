@@ -251,12 +251,13 @@ try
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             string code = totp.ComputeTotp(); // compute right before call
-            WriteLine($"Using 2FA code (masked): {code}**** (attempt {attempt})");
+            WriteLine($"Using 2FA code: {code}(attempt {attempt})");
     
             try
             {
                 // If Verify2FA has a return value, prefer checking it; otherwise check currentUser afterward
-                authApi.Verify2FA(new(code));
+                var result = authApi.Verify2FA(new(code));
+                WriteLine($"Verify2FA result: {result}");
             }
             catch (Exception ex)
             {
@@ -265,7 +266,6 @@ try
     
             currentUser = authApi.GetCurrentUser();
             await WaitSeconds(1);
-                WriteLine($"Logged in as {currentUser.DisplayName}");
 
     
             if (currentUser != null)
