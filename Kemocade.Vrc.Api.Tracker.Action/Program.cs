@@ -186,6 +186,7 @@ try
         Username = inputs.Username,
         Password = inputs.Password,
         UserAgent = "kemocade/0.0.1 admin%40kemocade.com"
+        
     };
 
     // Create a shared ApiClient for session/cookie management
@@ -206,19 +207,8 @@ try
     if (currentUser == null)
     {
         WriteLine("2FA needed...");
-    
-        // Normalize and decode the key
-        string rawKey = inputs.Key ?? string.Empty;
-        rawKey = rawKey.Replace(" ", string.Empty).Trim();
-        // If someone pasted an otpauth URI, strip it
-        if (rawKey.StartsWith("otpauth://", StringComparison.OrdinalIgnoreCase))
-        {
-            // otpauth://totp/Label?secret=SECRET&...
-            var m = Regex.Match(rawKey, @"[&?]secret=([^&]+)", RegexOptions.IgnoreCase);
-            if (m.Success) rawKey = m.Groups[1].Value;
-        }
-        string key = Regex.Replace(rawKey.ToUpperInvariant(), @"[^A-Z2-7]", string.Empty);
-    
+
+        string key = inputs.Key;
         // For debugging only: print timestamp (do NOT print key or full code in prod)
         WriteLine($"Local UTC time: {DateTimeOffset.UtcNow:O}");
     
