@@ -188,11 +188,14 @@ try
         UserAgent = "kemocade/0.0.1 admin%40kemocade.com"
     };
 
-    // Create instances of APIs we'll need
-    AuthenticationApi authApi = new(config);
-    WorldsApi worldsApi = new(config);
-    UsersApi usersApi = new(config);
-    GroupsApi groupsApi = new(config);
+    // Create a shared ApiClient for session/cookie management
+    ApiClient apiClient = new();
+
+    // Create instances of APIs using the shared ApiClient
+    AuthenticationApi authApi = new(apiClient, apiClient, config);
+    WorldsApi worldsApi = new(apiClient, apiClient, config);
+    UsersApi usersApi = new(apiClient, apiClient, config);
+    GroupsApi groupsApi = new(apiClient, apiClient, config);
 
     // Log in
     WriteLine("Logging in...");
