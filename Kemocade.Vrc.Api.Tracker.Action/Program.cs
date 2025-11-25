@@ -3,6 +3,7 @@ using Discord;
 using Discord.WebSocket;
 using Kemocade.Vrc.Api.Tracker.Action;
 using OtpNet;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VRChat.API.Api;
@@ -11,6 +12,7 @@ using VRChat.API.Model;
 using static Kemocade.Vrc.Api.Tracker.Action.TrackedData;
 using static Kemocade.Vrc.Api.Tracker.Action.TrackedData.TrackedDiscordServer;
 using static Kemocade.Vrc.Api.Tracker.Action.TrackedData.TrackedVrcGroup;
+
 using static System.Console;
 using static System.IO.File;
 using static System.Text.Json.JsonSerializer;
@@ -430,6 +432,106 @@ WriteLine(dataJsonString);
 // Write Json to file
 FileInfo dataJsonFile = new(Path.Join(output.FullName, "data.json"));
 WriteAllText(dataJsonFile.FullName, dataJsonString);
+
+// Generate PSC file if enabled
+bool usePsc = !string.IsNullOrEmpty(inputs.Psc) &&
+    inputs.Psc.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+if (usePsc)
+{
+    // Only attempt PSC generation if group tracking/mappings are present
+    try
+    {
+        WriteLine("PSC generation requested...");
+
+        // NOTE: variable names below are taken from the original action layout.
+        // If the target repo uses different variable names for these maps/arrays,
+        // replace them accordingly:
+        //
+        // - groupIds                     : string[] of tracked group ids
+        // - vrcGroupIdsToAllVrcRoles     : Dictionary<string, GroupRole[]>
+        // - vrcGroupIdsToVrcDisplayNamesToVrcRoleIds : Dictionary<string, Dictionary<string, string[]>>
+        // - vrcUserDisplayNames          : string[] of display names
+        //
+        // If names differ, adapt or leave a TODO for maintainers.
+
+        if (groupIds == null || groupIds.Length == 0)
+        {
+            WriteLine("No groupIds found; skipping PSC generation.");
+        }
+        else if (vrcGroupIdsToAllVrcRoles == null || vrcGroupIdsToVrcDisplayNamesToVrcRoleIds == null)
+        {
+            WriteLine("Required role mappings not present; skipping PSC generation.");
+        }
+        else
+        {
+            StringBuilder pscBuilder = new();
+            pscBuilder.AppendLine("// Auto-generated PSC file for PermissionManager");
+            pscBuilder.AppendLine("// https://github.com/MagmaMCNet/PermissionManager");
+            pscBuilder.AppendLine($"// Generated at: {DateTime.UtcNow.ToString("o")}");
+            pscBuilder.AppendLine();
+            pscBuilder.AppendLine("// Formatting");
+            pscBuilder.AppendLine("// >> - New Group");
+            pscBuilder.AppendLine("// > - Permission Statement");
+            pscBuilder.AppendLine("// + - Add extra Permission");
+            pscBuilder.AppendLine();
+
+            foreach (string groupId in groupIds)
+            {
+                if (!vrcGroupIdsToAllVrcRoles.ContainsKey(groupId)) continue;
+                if (!vrcGroupIdsToVrcDisplayNamesToVrcRoleIds.ContainsKey(groupId)) continue;
+
+                // roles: array/list of role objects for this group
+                var roles = vrcGroupIdsToAllVrcRoles[groupId];
+                var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
+
+                // Defensive: skip if null
+                if (roles == null) continue;
+                if (displayNameToRoleIds == null) continue;
+
+                // For each role in the group, create a PSC block
+                foreach (var role in roles)
+                {
+                    // role.Id and role.Name are expected properties. If your role type uses
+                    // different property names, update the references below.
+                    string roleId = role.Id;
+                    string roleName = role.Name?.Trim() ?? roleId;
+
+                    // Collect display names that include this roleId
+                    var usersWithRole = displayNameToRoleIds
+                        .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
+                        .Select(kvp => kvp.Key?.Trim())
+                        .Where(name => !string.IsNullOrEmpty(name))
+                        .OrderBy(n => n)
+                        .ToList();
+
+                    // Skip empty role blocks if no users
+                    if (usersWithRole.Count == 0)
+                    {
+                        // Still write empty role header if you prefer; currently we will still write it.
+                    }
+
+                    pscBuilder.AppendLine($">> {roleName} > {roleName}");
+                    foreach (var user in usersWithRole)
+                    {
+                        pscBuilder.AppendLine(user);
+                    }
+                    pscBuilder.AppendLine();
+                }
+            }
+
+            // Write to Permissions.PSC in the same output directory
+            FileInfo pscFile = new(Path.Join(output.FullName, "Permissions.PSC"));
+            WriteAllText(pscFile.FullName, pscBuilder.ToString());
+            WriteLine($"PSC file written to: {pscFile.FullName}");
+        }
+    }
+    catch (Exception ex)
+    {
+        // Do not fail the entire action on PSC generation errors; log and continue.
+        WriteLine($"Failed to generate PSC: {ex.Message}");
+    }
+}
 
 WriteLine("Done!");
 Environment.Exit(0);

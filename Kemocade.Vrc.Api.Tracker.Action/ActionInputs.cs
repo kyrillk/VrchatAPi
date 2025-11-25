@@ -33,4 +33,7 @@ internal record ActionInputs
 
     [Option('c', "channels")]
     public string Channels { get; init; } = null!;
+
+    [Option("psc")]
+    public string Psc { get; init; } = null!;
 }

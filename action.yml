@@ -29,6 +29,9 @@ inputs:
     description: 'Discord Guild ID(s) to track (if more than one, use a comma-delimited string)'
   channels:
     description: 'Discord Channel ID(s) to track (if more than one, use a comma-delimited string)'
+  psc:
+    description: 'Enable PSC file generation for PermissionManager compatibility (true/false)'
+    default: 'false'
 
 runs:
   using: 'docker'
@@ -54,3 +57,5 @@ runs:
   - ${{ inputs.discords }}
   - '-c'
   - ${{ inputs.channels }}
+  - '--psc'
+  - ${{ inputs.psc }}
