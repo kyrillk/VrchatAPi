@@ -248,7 +248,7 @@ try
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             string code = totp.ComputeTotp(); // compute right before call
-            WriteLine($"Using 2FA code (masked): {code.Substring(0, Math.Min(2, code.Length))}**** (attempt {attempt})");
+            WriteLine($"Using 2FA code (masked): {code}**** (attempt {attempt})");
     
             try
             {
