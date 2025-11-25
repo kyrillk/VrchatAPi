@@ -185,8 +185,8 @@ try
     {
         Username = inputs.Username,
         Password = inputs.Password,
-        UserAgent = "kemocade/0.0.1 admin%40kemocade.com"
-        
+        UserAgent = "kemocade/0.0.1 admin%40kemocade.com",
+        BasePath = "https://api.vrchat.cloud/api/1"
     };
 
     // Create a shared ApiClient for session/cookie management
@@ -209,6 +209,7 @@ try
         WriteLine("2FA needed...");
 
         string key = inputs.Key;
+
         // For debugging only: print timestamp (do NOT print key or full code in prod)
         WriteLine($"Local UTC time: {DateTimeOffset.UtcNow:O}");
     
