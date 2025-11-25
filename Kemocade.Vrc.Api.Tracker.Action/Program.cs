@@ -172,7 +172,7 @@ foreach (KeyValuePair<ulong, ulong> kvp in discordServerIdsToChannelIds )
 // World Data
 Dictionary<string, World> vrcWorldIdsToWorldModels = [];
 // Group Data
-Dictionary<string, Group> vrcGroupIdsToGroupModels = [];
+Dictionary<string, VRChat.API.Model.Group> vrcGroupIdsToGroupModels = [];
 Dictionary<string, GroupRole[]> vrcGroupIdsToAllVrcRoles = [];
 Dictionary<string, Dictionary<string, string[]>> vrcGroupIdsToVrcDisplayNamesToVrcRoleIds = [];
 // Discord Data
@@ -301,7 +301,7 @@ try
     foreach (string groupId in groupIds)
     {
         // Get group
-        Group group = groupsApi.GetGroup(groupId);
+        VRChat.API.Model.Group group = groupsApi.GetGroup(groupId);
         int memberCount = group.MemberCount;
         WriteLine($"Got Group {group.Name}, Members: {memberCount}");
 
