@@ -249,14 +249,26 @@ try
                 // If Verify2FA has a return value, prefer checking it; otherwise check currentUser afterward
                 var result = authApi.Verify2FA(new TwoFactorAuthCode(code));
                 WriteLine($"Verify2FA result: {result}");
+
+                if (result.Verified)
+                {
+                    WriteLine("2FA verified! Continuing...");
+                    await Task.Delay(10000); // wait 2 seconds for session to register
+                    currentUser = authApi.GetCurrentUser();
+
+                        ApiResponse<CurrentUser> response = authApi.GetCurrentUserWithHttpInfo();
+                        WriteLine("Status Code: " + response.StatusCode);
+                        WriteLine("Response Headers: " + response.Headers);
+                        WriteLine("Response Body: " + response.Data);
+                }
+
             }
             catch (Exception ex)
             {
                 WriteLine($"Verify2FA threw: {ex.Message}");
             }
     
-            currentUser = authApi.GetCurrentUser();
-            await WaitSeconds(1);
+    
 
     
             if (currentUser != null)
