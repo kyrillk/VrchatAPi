@@ -170,7 +170,7 @@ try
             if (attempt < maxAttempts)
             {
                 // Sleep into next time window if needed
-                await Task.Delay(1000);
+                await Task.Delay(60000);
             }
         }
     
