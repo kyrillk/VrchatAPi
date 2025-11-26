@@ -212,12 +212,12 @@ try
 
         // Ensure the Local User is in the VRC Group
         GroupMyMember self = group.MyMember;
-        if (self == null || self.UserId != currentUser.Id)
-        {
-            WriteLine("Local User must be a member of the VRC Group!");
-            Environment.Exit(2);
-            return;
-        }
+       // if (self == null || self.UserId != currentUser.Id)
+       // {
+       //     WriteLine("Local User must be a member of the VRC Group!");
+       //     Environment.Exit(2);
+       //     return;
+        //}
 
         // Get group members
         WriteLine("Getting Group Members...");
