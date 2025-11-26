@@ -137,7 +137,6 @@ try
                 for (int i = 0; i < 3; i++)
                 {
                     currentUser = authApi.GetCurrentUser();
-                    await Task.Delay(60000); // wait 60 seconds before retry
 
                     if (currentUser != null)
                     {
@@ -149,6 +148,7 @@ try
                         WriteLine($"Got friends list after 2FA (GetFriends): {friendList.Count} friends");
                         break;
                     }
+                    await Task.Delay(60000); // wait 60 seconds before retry
                 }
             }
             catch (Exception ex)
