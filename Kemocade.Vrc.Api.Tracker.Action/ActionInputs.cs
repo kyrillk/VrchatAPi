@@ -39,4 +39,7 @@ internal record ActionInputs
 
     [Option("exclude")]
     public string Exclude { get; init; } = null!;
+
+    [Option("mergegroups")]
+    public string MergeGroups { get; init; } = null!;
 }

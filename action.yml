@@ -61,3 +61,5 @@ runs:
   - ${{ inputs.psc }}
   - '--exclude'
   - ${{ inputs.exclude }}
+  - '--mergegroups'
+  - ${{ inputs.mergegroups }}

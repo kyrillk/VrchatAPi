@@ -378,44 +378,60 @@ if (usePsc)
                 if (!vrcGroupIdsToAllVrcRoles.ContainsKey(groupId)) continue;
                 if (!vrcGroupIdsToVrcDisplayNamesToVrcRoleIds.ContainsKey(groupId)) continue;
 
-                // roles: array/list of role objects for this group
                 var roles = vrcGroupIdsToAllVrcRoles[groupId];
                 var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
-
-                // Defensive: skip if null
                 if (roles == null) continue;
                 if (displayNameToRoleIds == null) continue;
 
-                // For each role in the group, create a PSC block
-                foreach (var role in roles)
+                // Option to merge all group roles into one group
+                bool mergeGroups = !string.IsNullOrEmpty(inputs.MergeGroups) && inputs.MergeGroups.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+                if (mergeGroups)
                 {
-                    string roleId = role.Id;
-                    string roleName = role.Name?.Trim() ?? roleId;
-
-                    // Skip roles with excluded names
-                    if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
-                        continue;
-
-                    // Collect display names that include this roleId
-                    var usersWithRole = displayNameToRoleIds
-                        .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
-                        .Select(kvp => kvp.Key?.Trim())
-                        .Where(name => !string.IsNullOrEmpty(name))
-                        .OrderBy(n => n)
-                        .ToList();
-
-                    // Skip empty role blocks if no users
-                    if (usersWithRole.Count == 0)
+                    // Collect all users from all roles, excluding filtered roles
+                    var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var role in roles)
                     {
-                        // Still write empty role header if you prefer; currently we will still write it.
+                        string roleId = role.Id;
+                        string roleName = role.Name?.Trim() ?? roleId;
+                        if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+                            continue;
+                        var usersWithRole = displayNameToRoleIds
+                            .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
+                            .Select(kvp => kvp.Key?.Trim())
+                            .Where(name => !string.IsNullOrEmpty(name));
+                        foreach (var user in usersWithRole)
+                            allUsers.Add(user);
                     }
-
-                    pscBuilder.AppendLine($">> {roleName} > {roleName}");
-                    foreach (var user in usersWithRole)
-                    {
+                    // Output merged block for the group
+                    pscBuilder.AppendLine($">> {groupId} > {groupId}");
+                    foreach (var user in allUsers.OrderBy(n => n))
                         pscBuilder.AppendLine(user);
+                }
+                else
+                {
+                    // Default: output separate blocks per role
+                    foreach (var role in roles)
+                    {
+                        string roleId = role.Id;
+                        string roleName = role.Name?.Trim() ?? roleId;
+                        if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+                            continue;
+                        var usersWithRole = displayNameToRoleIds
+                            .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
+                            .Select(kvp => kvp.Key?.Trim())
+                            .Where(name => !string.IsNullOrEmpty(name))
+                            .OrderBy(n => n)
+                            .ToList();
+                        if (usersWithRole.Count == 0)
+                        {
+                            // Still write empty role header if you prefer; currently we will still write it.
+                        }
+                        pscBuilder.AppendLine($">> {roleName} > {roleName}");
+                        foreach (var user in usersWithRole)
+                            pscBuilder.AppendLine(user);
+                        pscBuilder.AppendLine();
                     }
-                    pscBuilder.AppendLine();
                 }
             }
 
