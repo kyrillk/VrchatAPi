@@ -407,7 +407,7 @@ if (usePsc)
                             allUsers.Add(user);
                     }
                     // Output merged block for the group
-                    pscBuilder.AppendLine($">> {groupId} > {groupId}");
+                    pscBuilder.AppendLine($">> {mergeGroups[0]} > {mergeGroups[0]}");
                     foreach (var user in allUsers.OrderBy(n => n))
                         pscBuilder.AppendLine(user);
                 }
