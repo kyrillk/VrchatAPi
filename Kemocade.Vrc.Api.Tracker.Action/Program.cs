@@ -84,7 +84,7 @@ try
     // Log in
     WriteLine("Logging in...");
     CurrentUser currentUser = authApi.GetCurrentUser();
-    List<LimitedUserFriend> friendList =  friendsApi.GetFriends();
+    List<LimitedUserFriend> friendList = null;
     await WaitSeconds(1);
 
     // Check if 2FA is needed
