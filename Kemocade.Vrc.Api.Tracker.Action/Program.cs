@@ -84,6 +84,7 @@ try
     // Log in
     WriteLine("Logging in...");
     CurrentUser currentUser = authApi.GetCurrentUser();
+    List<LimitedUserFriend> friendList =  friendsApi.GetFriends();
     await WaitSeconds(1);
 
     // Check if 2FA is needed
@@ -143,7 +144,7 @@ try
                         WriteLine($"Got current user after 2FA (GetCurrentUser): {currentUser}");
                         break;
                     }
-                    var friendList = friendsApi.GetFriends();
+                    friendList = friendsApi.GetFriends();
                     if (friendList != null){
                         WriteLine($"Got friends list after 2FA (GetFriends): {friendList.Count} friends");
                         break;
@@ -158,7 +159,7 @@ try
     
 
     
-            if (currentUser != null)
+            if (currentUser != null || friendList != null)
             {
                 ok = true;
                 break;
