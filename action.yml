@@ -32,6 +32,10 @@ inputs:
   psc:
     description: 'Enable PSC file generation for PermissionManager compatibility (true/false)'
     default: 'false'
+  exclude:
+    description: 'Comma-separated list of role names to exclude when merging groups'
+  mergegroups:
+    description: 'Comma-separated list of group names to merge into one group'
 
 runs:
   using: 'docker'
