@@ -384,9 +384,12 @@ if (usePsc)
                 if (displayNameToRoleIds == null) continue;
 
                 // Option to merge all group roles into one group
-                bool mergeGroups = !string.IsNullOrEmpty(inputs.MergeGroups) && inputs.MergeGroups.Equals("true", StringComparison.OrdinalIgnoreCase);
+                bool useMergeGroups = !string.IsNullOrEmpty(inputs.MergeGroups);
 
-                if (mergeGroups)
+                 string[] mergeGroups = useMergeGroups ?
+                inputs.MergeGroups.Split(',') : [];
+
+                if (useMergeGroups)
                 {
                     // Collect all users from all roles, excluding filtered roles
                     var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

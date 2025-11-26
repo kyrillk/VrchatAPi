@@ -37,9 +37,9 @@ internal record ActionInputs
     [Option("psc")]
     public string Psc { get; init; } = null!;
 
-    [Option("exclude")]
+    [Option('e', "exclude")]
     public string Exclude { get; init; } = null!;
 
-    [Option("mergegroups")]
+    [Option('m', "mergegroups")]
     public string MergeGroups { get; init; } = null!;
 }
