@@ -59,3 +59,5 @@ runs:
   - ${{ inputs.channels }}
   - '--psc'
   - ${{ inputs.psc }}
+  - '--exclude'
+  - ${{ inputs.exclude }}
