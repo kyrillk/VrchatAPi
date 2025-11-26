@@ -181,7 +181,16 @@ try
             return;
         }
     }
-    WriteLine($"Logged in as {currentUser.DisplayName}");
+    
+    WriteLine($"Logged in as ");
+    if (currentUser != null)
+    {
+        Write(currentUser.DisplayName);
+    }
+    else
+    {
+        Write("unknown");
+    }
 
     // Get all info from all tracked worlds
     foreach (string worldId in worldIds)
