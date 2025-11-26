@@ -8,13 +8,13 @@ RUN dotnet publish ./Kemocade.Vrc.Api.Tracker.Action/Kemocade.Vrc.Api.Tracker.Ac
 
 # Label the container
 LABEL maintainer="Dustuu <dustuu@kemocade.com>"
-LABEL repository="https://github.com/kemocade/Kemocade.Vrc.Api.Tracker.Action"
-LABEL homepage="https://github.com/kemocade/Kemocade.Vrc.Api.Tracker.Action"
+LABEL repository="https://github.com/kyrillk/VrchatAPi/t"
+LABEL homepage="https://github.com/kyrillk/VrchatAPi"
 
 # Label as GitHub action
-LABEL com.github.actions.name="VRChat API Tracker Action"
+LABEL com.github.actions.name="VRChat API PSC Action"
 # Limit to 160 characters
-LABEL com.github.actions.description="VRChat API Tracker Action"
+LABEL com.github.actions.description="VRChat API PSC Action"
 # See branding:
 # https://docs.github.com/actions/creating-actions/metadata-syntax-for-github-actions#branding
 LABEL com.github.actions.icon="upload-cloud"
