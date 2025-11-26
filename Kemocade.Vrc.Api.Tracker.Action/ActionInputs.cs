@@ -36,4 +36,7 @@ internal record ActionInputs
 
     [Option("psc")]
     public string Psc { get; init; } = null!;
+
+    [Option("exclude")]
+    public string Exclude { get; init; } = null!;
 }

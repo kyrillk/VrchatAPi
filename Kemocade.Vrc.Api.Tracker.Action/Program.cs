@@ -367,6 +367,12 @@ if (usePsc)
             pscBuilder.AppendLine("// + - Add extra Permission");
             pscBuilder.AppendLine();
 
+            // List of role names to exclude from PSC output
+            bool useExcludedRoleNames = !string.IsNullOrEmpty(inputs.Exclude);
+
+            string[] excludedRoleNames = useExcludedRoleNames ?
+            inputs.Exclude.Split(',') : [];
+
             foreach (string groupId in groupIds)
             {
                 if (!vrcGroupIdsToAllVrcRoles.ContainsKey(groupId)) continue;
@@ -383,10 +389,12 @@ if (usePsc)
                 // For each role in the group, create a PSC block
                 foreach (var role in roles)
                 {
-                    // role.Id and role.Name are expected properties. If your role type uses
-                    // different property names, update the references below.
                     string roleId = role.Id;
                     string roleName = role.Name?.Trim() ?? roleId;
+
+                    // Skip roles with excluded names
+                    if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+                        continue;
 
                     // Collect display names that include this roleId
                     var usersWithRole = displayNameToRoleIds
