@@ -1,4 +1,4 @@
-name: 'VRChat API Tracker Action'
+name: 'VRChat API PSC Action'
 description: 'GitHub Action for automatically tracking information from the VRChat API'
 branding:
   icon: globe
