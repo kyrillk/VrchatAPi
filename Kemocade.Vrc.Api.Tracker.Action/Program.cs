@@ -337,7 +337,7 @@ if (usePsc)
     // Only attempt PSC generation if group tracking/mappings are present
     try
     {
-        WriteLine("PSC generation requested...");
+        WriteLine("TXT generation requested...");
 
         // NOTE: variable names below are taken from the original action layout.
         // If the target repo uses different variable names for these maps/arrays,
@@ -352,26 +352,15 @@ if (usePsc)
 
         if (groupIds == null || groupIds.Length == 0)
         {
-            WriteLine("No groupIds found; skipping PSC generation.");
+            WriteLine("No groupIds found; skipping TXT generation.");
         }
         else
         {
-            StringBuilder pscBuilder = new();
-            pscBuilder.AppendLine("// Auto-generated PSC file for PermissionManager");
-            pscBuilder.AppendLine("// https://github.com/MagmaMCNet/PermissionManager");
-            pscBuilder.AppendLine($"// Generated at: {DateTime.UtcNow.ToString("o")}");
-            pscBuilder.AppendLine();
-            pscBuilder.AppendLine("// Formatting");
-            pscBuilder.AppendLine("// >> - New Group");
-            pscBuilder.AppendLine("// > - Permission Statement");
-            pscBuilder.AppendLine("// + - Add extra Permission");
-            pscBuilder.AppendLine();
+            StringBuilder allowedGroupsBuilder = new();
 
-            // List of role names to exclude from PSC output
+            // role names to exclude from consideration
             bool useExcludedRoleNames = !string.IsNullOrEmpty(inputs.Exclude);
-
-            string[] excludedRoleNames = useExcludedRoleNames ?
-            inputs.Exclude.Split(',') : [];
+            string[] excludedRoleNames = useExcludedRoleNames ? inputs.Exclude.Split(',') : [];
 
             foreach (string groupId in groupIds)
             {
@@ -380,68 +369,33 @@ if (usePsc)
 
                 var roles = vrcGroupIdsToAllVrcRoles[groupId];
                 var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
-                if (roles == null) continue;
-                if (displayNameToRoleIds == null) continue;
+                if (roles == null || displayNameToRoleIds == null) continue;
 
-                // Option to merge all group roles into one group
-                bool useMergeGroups = !string.IsNullOrEmpty(inputs.MergeGroups);
-
-                 string[] mergeGroups = useMergeGroups ?
-                inputs.MergeGroups.Split(',') : [];
-
-                if (useMergeGroups)
-                {
-                    // Collect all users from all roles, excluding filtered roles
-                    var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var role in roles)
+                // Find role ids that are not excluded
+                var allowedRoleIds = roles
+                    .Where(role =>
                     {
-                        string roleId = role.Id;
-                        string roleName = role.Name?.Trim() ?? roleId;
-                        if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
-                            continue;
-                        var usersWithRole = displayNameToRoleIds
-                            .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
-                            .Select(kvp => kvp.Key?.Trim())
-                            .Where(name => !string.IsNullOrEmpty(name));
-                        foreach (var user in usersWithRole)
-                            allUsers.Add(user);
-                    }
-                    // Output merged block for the group
-                    pscBuilder.AppendLine($">> {mergeGroups[0]} > {mergeGroups[0]}");
-                    foreach (var user in allUsers.OrderBy(n => n))
-                        pscBuilder.AppendLine(user);
-                }
-                else
-                {
-                    // Default: output separate blocks per role
-                    foreach (var role in roles)
-                    {
-                        string roleId = role.Id;
-                        string roleName = role.Name?.Trim() ?? roleId;
-                        if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
-                            continue;
-                        var usersWithRole = displayNameToRoleIds
-                            .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
-                            .Select(kvp => kvp.Key?.Trim())
-                            .Where(name => !string.IsNullOrEmpty(name))
-                            .OrderBy(n => n)
-                            .ToList();
-                        if (usersWithRole.Count == 0)
-                        {
-                            // Still write empty role header if you prefer; currently we will still write it.
-                        }
-                        pscBuilder.AppendLine($">> {roleName} > {roleName}");
-                        foreach (var user in usersWithRole)
-                            pscBuilder.AppendLine(user);
-                        pscBuilder.AppendLine();
-                    }
-                }
+                        string roleName = role.Name?.Trim() ?? role.Id;
+                        return !useExcludedRoleNames ||
+                               !excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase);
+                    })
+                    .Select(r => r.Id)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                if (allowedRoleIds.Count == 0) continue;
+
+                // Include group only if at least one member has any of the allowed roles
+                bool hasMembersInAllowedRoles = displayNameToRoleIds
+                    .Any(kvp => kvp.Value != null && kvp.Value.Any(rid => allowedRoleIds.Contains(rid)));
+
+                if (!hasMembersInAllowedRoles) continue;
+
+                string groupName = vrcGroupIdsToGroupModels.TryGetValue(groupId, out var gm)
+                    ? (gm?.Name?.Trim() ?? groupId)
+                    : groupId;
+
+                allowedGroupsBuilder.AppendLine(groupName);
             }
-
-            // Write to Permissions.PSC in the same output directory
-            FileInfo pscFile = new(Path.Join(output.FullName, "Permissions.PSC"));
-            WriteAllText(pscFile.FullName, pscBuilder.ToString());
-            WriteLine($"PSC file written to: {pscFile.FullName}");
         }
     }
     catch (Exception ex)
