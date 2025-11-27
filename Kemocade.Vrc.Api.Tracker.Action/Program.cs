@@ -393,23 +393,21 @@ if (usePsc)
                 foreach (var user in allUsers.OrderBy(n => n))
                     txtBuilder.AppendLine(user);
             }
-
-
+            
             // Write to Permissions.PSC in the same output directory
             FileInfo staffFile = new(Path.Join(output.FullName, "Staff.txt"));
-            FileInfo pscFile = new(Path.Join(output.FullName, "Permissions.PSC"));
-            WriteAllText(pscFile.FullName, txtBuilder.ToString());
-            WriteLine($"PSC file written to: {pscFile.FullName}");
+            WriteAllText(staffFile.FullName, txtBuilder.ToString());
+            WriteLine($"TXT file written to: {staffFile.FullName}");
+            WriteLine(txtBuilder);
         }
     }
     catch (Exception ex)
     {
         // Do not fail the entire action on PSC generation errors; log and continue.
-        WriteLine($"Failed to generate PSC: {ex.Message}");
+        WriteLine($"Failed to generate TXT: {ex.Message}");
     }
 }
 
-// Write a simple AllowedGroups.txt (one group name per line) for downstream consumers
 Environment.Exit(0);
 
 static async Task WaitSeconds(int seconds) =>
