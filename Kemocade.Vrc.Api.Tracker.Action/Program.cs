@@ -337,7 +337,7 @@ if (usePsc)
     // Only attempt PSC generation if group tracking/mappings are present
     try
     {
-        WriteLine("TXT generation requested...");
+        WriteLine("PSC generation requested...");
 
         // NOTE: variable names below are taken from the original action layout.
         // If the target repo uses different variable names for these maps/arrays,
@@ -352,14 +352,15 @@ if (usePsc)
 
         if (groupIds == null || groupIds.Length == 0)
         {
-            WriteLine("No groupIds found; skipping TXT generation.");
+            WriteLine("No groupIds found; skipping PSC generation.");
         }
         else
         {
-            StringBuilder allowedGroupsBuilder = new();
+            StringBuilder txtBuilder = new();
 
-            // role names to exclude from consideration
+            // List of role names to exclude from TXT output
             bool useExcludedRoleNames = !string.IsNullOrEmpty(inputs.Exclude);
+
             string[] excludedRoleNames = useExcludedRoleNames ? inputs.Exclude.Split(',') : [];
 
             foreach (string groupId in groupIds)
@@ -369,33 +370,36 @@ if (usePsc)
 
                 var roles = vrcGroupIdsToAllVrcRoles[groupId];
                 var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
-                if (roles == null || displayNameToRoleIds == null) continue;
+                if (roles == null) continue;
+                if (displayNameToRoleIds == null) continue;
 
-                // Find role ids that are not excluded
-                var allowedRoleIds = roles
-                    .Where(role =>
-                    {
-                        string roleName = role.Name?.Trim() ?? role.Id;
-                        return !useExcludedRoleNames ||
-                               !excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase);
-                    })
-                    .Select(r => r.Id)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                // Collect all users from all roles, excluding filtered roles
+                var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var role in roles)
+                {
+                    string roleId = role.Id;
+                    string roleName = role.Name?.Trim() ?? roleId;
+                    if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+                        continue;
+                    var usersWithRole = displayNameToRoleIds
+                        .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
+                        .Select(kvp => kvp.Key?.Trim())
+                        .Where(name => !string.IsNullOrEmpty(name));
+                    foreach (var user in usersWithRole)
+                        allUsers.Add(user);
+                }
 
-                if (allowedRoleIds.Count == 0) continue;
-
-                // Include group only if at least one member has any of the allowed roles
-                bool hasMembersInAllowedRoles = displayNameToRoleIds
-                    .Any(kvp => kvp.Value != null && kvp.Value.Any(rid => allowedRoleIds.Contains(rid)));
-
-                if (!hasMembersInAllowedRoles) continue;
-
-                string groupName = vrcGroupIdsToGroupModels.TryGetValue(groupId, out var gm)
-                    ? (gm?.Name?.Trim() ?? groupId)
-                    : groupId;
-
-                allowedGroupsBuilder.AppendLine(groupName);
+                // Output merged block for the group
+                foreach (var user in allUsers.OrderBy(n => n))
+                    txtBuilder.AppendLine(user);
             }
+
+
+            // Write to Permissions.PSC in the same output directory
+            FileInfo staffFile = new(Path.Join(output.FullName, "Staff.txt"));
+            FileInfo pscFile = new(Path.Join(output.FullName, "Permissions.PSC"));
+            WriteAllText(pscFile.FullName, txtBuilder.ToString());
+            WriteLine($"PSC file written to: {pscFile.FullName}");
         }
     }
     catch (Exception ex)
@@ -405,7 +409,7 @@ if (usePsc)
     }
 }
 
-WriteLine("Done!");
+// Write a simple AllowedGroups.txt (one group name per line) for downstream consumers
 Environment.Exit(0);
 
 static async Task WaitSeconds(int seconds) =>
