@@ -315,97 +315,77 @@ TrackedData data = new()
         )
 };
 
-// Build Json from data
-JsonSerializerOptions options = new()
+// Only attempt PSC generation if group tracking/mappings are present
+try
 {
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-};
-string dataJsonString = Serialize(data, options);
-WriteLine(dataJsonString);
+    WriteLine("PSC generation requested...");
 
-// Write Json to file
-FileInfo dataJsonFile = new(Path.Join(output.FullName, "data.json"));
-WriteAllText(dataJsonFile.FullName, dataJsonString);
+    // NOTE: variable names below are taken from the original action layout.
+    // If the target repo uses different variable names for these maps/arrays,
+    // replace them accordingly:
+    //
+    // - groupIds                     : string[] of tracked group ids
+    // - vrcGroupIdsToAllVrcRoles     : Dictionary<string, GroupRole[]>
+    // - vrcGroupIdsToVrcDisplayNamesToVrcRoleIds : Dictionary<string, Dictionary<string, string[]>>
+    // - vrcUserDisplayNames          : string[] of display names
+    //
+    // If names differ, adapt or leave a TODO for maintainers.
 
-// Generate PSC file if enabled
-bool usePsc = !string.IsNullOrEmpty(inputs.Psc) &&
-    inputs.Psc.Equals("true", StringComparison.OrdinalIgnoreCase);
-
-if (usePsc)
-{
-    // Only attempt PSC generation if group tracking/mappings are present
-    try
+    if (groupIds == null || groupIds.Length == 0)
     {
-        WriteLine("PSC generation requested...");
+        WriteLine("No groupIds found; skipping PSC generation.");
+    }
+    else
+    {
+        StringBuilder txtBuilder = new();
 
-        // NOTE: variable names below are taken from the original action layout.
-        // If the target repo uses different variable names for these maps/arrays,
-        // replace them accordingly:
-        //
-        // - groupIds                     : string[] of tracked group ids
-        // - vrcGroupIdsToAllVrcRoles     : Dictionary<string, GroupRole[]>
-        // - vrcGroupIdsToVrcDisplayNamesToVrcRoleIds : Dictionary<string, Dictionary<string, string[]>>
-        // - vrcUserDisplayNames          : string[] of display names
-        //
-        // If names differ, adapt or leave a TODO for maintainers.
+        // List of role names to exclude from TXT output
+        bool useExcludedRoleNames = !string.IsNullOrEmpty(inputs.Exclude);
 
-        if (groupIds == null || groupIds.Length == 0)
+        string[] excludedRoleNames = useExcludedRoleNames ? inputs.Exclude.Split(',') : [];
+
+        foreach (string groupId in groupIds)
         {
-            WriteLine("No groupIds found; skipping PSC generation.");
-        }
-        else
-        {
-            StringBuilder txtBuilder = new();
+            if (!vrcGroupIdsToAllVrcRoles.ContainsKey(groupId)) continue;
+            if (!vrcGroupIdsToVrcDisplayNamesToVrcRoleIds.ContainsKey(groupId)) continue;
 
-            // List of role names to exclude from TXT output
-            bool useExcludedRoleNames = !string.IsNullOrEmpty(inputs.Exclude);
+            var roles = vrcGroupIdsToAllVrcRoles[groupId];
+            var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
+            if (roles == null) continue;
+            if (displayNameToRoleIds == null) continue;
 
-            string[] excludedRoleNames = useExcludedRoleNames ? inputs.Exclude.Split(',') : [];
-
-            foreach (string groupId in groupIds)
+            // Collect all users from all roles, excluding filtered roles
+            var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var role in roles)
             {
-                if (!vrcGroupIdsToAllVrcRoles.ContainsKey(groupId)) continue;
-                if (!vrcGroupIdsToVrcDisplayNamesToVrcRoleIds.ContainsKey(groupId)) continue;
-
-                var roles = vrcGroupIdsToAllVrcRoles[groupId];
-                var displayNameToRoleIds = vrcGroupIdsToVrcDisplayNamesToVrcRoleIds[groupId];
-                if (roles == null) continue;
-                if (displayNameToRoleIds == null) continue;
-
-                // Collect all users from all roles, excluding filtered roles
-                var allUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var role in roles)
-                {
-                    string roleId = role.Id;
-                    string roleName = role.Name?.Trim() ?? roleId;
-                    if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
-                        continue;
-                    var usersWithRole = displayNameToRoleIds
-                        .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
-                        .Select(kvp => kvp.Key?.Trim())
-                        .Where(name => !string.IsNullOrEmpty(name));
-                    foreach (var user in usersWithRole)
-                        allUsers.Add(user);
-                }
-
-                // Output merged block for the group
-                foreach (var user in allUsers.OrderBy(n => n))
-                    txtBuilder.AppendLine(user);
+                string roleId = role.Id;
+                string roleName = role.Name?.Trim() ?? roleId;
+                if (excludedRoleNames.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+                    continue;
+                var usersWithRole = displayNameToRoleIds
+                    .Where(kvp => kvp.Value != null && kvp.Value.Contains(roleId))
+                    .Select(kvp => kvp.Key?.Trim())
+                    .Where(name => !string.IsNullOrEmpty(name));
+                foreach (var user in usersWithRole)
+                    allUsers.Add(user);
             }
-            
-            // Write to Permissions.PSC in the same output directory
-            FileInfo staffFile = new(Path.Join(output.FullName, "Staff.txt"));
-            WriteAllText(staffFile.FullName, txtBuilder.ToString());
-            WriteLine($"TXT file written to: {staffFile.FullName}");
-            WriteLine(txtBuilder);
+
+            // Output merged block for the group
+            foreach (var user in allUsers.OrderBy(n => n))
+                txtBuilder.AppendLine(user);
         }
+        
+        // Write to Permissions.PSC in the same output directory
+        FileInfo staffFile = new(Path.Join(output.FullName, "Staff.txt"));
+        WriteAllText(staffFile.FullName, txtBuilder.ToString());
+        WriteLine($"TXT file written to: {staffFile.FullName}");
+        WriteLine(txtBuilder);
     }
-    catch (Exception ex)
-    {
-        // Do not fail the entire action on PSC generation errors; log and continue.
-        WriteLine($"Failed to generate TXT: {ex.Message}");
-    }
+}
+catch (Exception ex)
+{
+    // Do not fail the entire action on PSC generation errors; log and continue.
+    WriteLine($"Failed to generate TXT: {ex.Message}");
 }
 
 Environment.Exit(0);
